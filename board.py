@@ -1,71 +1,69 @@
-"""
-Board Module.
-
-This module manages the core game logic, including deck generation,
-layout loading, and the validation of legal moves according
-to Mahjong Solitaire rules.
-"""
-
+# board.py
 import random
 import constants as c
 import layouts
 from tile import Tile
 
 class Board:
-    """
-    Represents the game board and enforces game rules.
-
-    Attributes:
-        tiles (list[Tile]): A list containing all active Tile instances.
-    """
-
     def __init__(self):
-        """
-        Initializes the board.
-        """
         self.tiles = []
-        self._generate_deck()
+        self._generate_spanish_deck() # <--- Nombre nuevo
         self._load_layout()
 
-    def _generate_deck(self):
-        """Generates the standard 144 Mahjong tiles."""
+    def _generate_spanish_deck(self):
+        """Genera las 144 fichas usando la estructura de Baraja Española."""
         self.tiles = []
         tile_id = 0
         
-        # 1. Suits
-        suits = [c.SUIT_BAMBOO, c.SUIT_DOTS, c.SUIT_CHARACTERS]
-        for suit in suits:
-            for value in range(1, 10):
-                for _ in range(4):
+        # 1. CARTAS NUMÉRICAS (1 al 9) de OROS, COPAS, ESPADAS
+        # (Equivalente a los 3 palos del Mahjong)
+        # 3 palos x 9 cartas x 4 copias = 108 fichas
+        main_suits = [c.SUIT_COINS, c.SUIT_CUPS, c.SUIT_SWORDS]
+        for suit in main_suits:
+            for value in range(1, 10): # Del 1 al 9
+                for _ in range(4):     # 4 copias de cada
                     self.tiles.append(Tile(suit, value, tile_id))
                     tile_id += 1
         
-        # 2. Winds
-        winds = ["North", "South", "East", "West"]
-        for wind in winds:
+        # 2. CABALLOS (Knights) - 4 Tipos
+        # (Equivalente a Vientos)
+        # Usamos los 4 palos para los caballos: Coins, Cups, Swords, Clubs
+        # 4 tipos x 4 copias = 16 fichas
+        knights = [c.SUIT_COINS, c.SUIT_CUPS, c.SUIT_SWORDS, c.SUIT_CLUBS]
+        for k_suit in knights:
             for _ in range(4):
-                self.tiles.append(Tile(c.SUIT_WINDS, wind, tile_id))
+                self.tiles.append(Tile(c.TYPE_KNIGHT, k_suit, tile_id))
                 tile_id += 1
 
-        # 3. Dragons
-        dragons = ["Red", "Green", "White"]
-        for dragon in dragons:
+        # 3. COMODINES (Jokers) - 3 Tipos
+        # (Equivalente a Dragones)
+        # 3 tipos x 4 copias = 12 fichas
+        jokers = ["Red", "Green", "Blue"] # Tus archivos son Joker_Red, Joker_Green...
+        for color in jokers:
             for _ in range(4):
-                self.tiles.append(Tile(c.SUIT_DRAGONS, dragon, tile_id))
+                self.tiles.append(Tile(c.TYPE_JOKER, color, tile_id))
                 tile_id += 1
         
-        # 4. Flowers & Seasons
-        for i in range(1, 5):
-            self.tiles.append(Tile(c.SUIT_FLOWERS, i, tile_id))
+        # 4. SOTAS (Jacks) - Bonus 1
+        # (Equivalente a Flores)
+        # 4 tipos x 1 copia = 4 fichas
+        jacks = [c.SUIT_COINS, c.SUIT_CUPS, c.SUIT_SWORDS, c.SUIT_CLUBS]
+        for j_suit in jacks:
+            self.tiles.append(Tile(c.TYPE_JACK, j_suit, tile_id))
             tile_id += 1
-        for i in range(1, 5):
-            self.tiles.append(Tile(c.SUIT_SEASONS, i, tile_id))
+
+        # 5. REYES (Kings) - Bonus 2
+        # (Equivalente a Estaciones)
+        # 4 tipos x 1 copia = 4 fichas
+        kings = [c.SUIT_COINS, c.SUIT_CUPS, c.SUIT_SWORDS, c.SUIT_CLUBS]
+        for k_suit in kings:
+            self.tiles.append(Tile(c.TYPE_KING, k_suit, tile_id))
             tile_id += 1
         
         random.shuffle(self.tiles)
 
     def _load_layout(self):
-        """Assigns coordinates based on Layout."""
+        # (Esto NO cambia, usa layouts.py igual)
         positions = layouts.get_turtle_layout()
         if len(self.tiles) > len(positions):
             self.tiles = self.tiles[:len(positions)]
@@ -76,9 +74,8 @@ class Board:
                 tile.set_position(x, y, z)
 
     def can_move(self, tile):
-        """
-        Determines if a tile is unblocked.
-        """
+        # (Copia tu método can_move anterior, ese es pura física y no cambia)
+        # ... (código de colisiones igual que antes) ...
         left = tile.x
         right = tile.x + c.TILE_WIDTH
         top = tile.y
@@ -90,29 +87,18 @@ class Board:
         blocked_right = False
         
         for other in self.tiles:
-            if other.id == tile.id:
-                continue
+            if other.id == tile.id: continue
+            if not other.is_visible: continue # Importante
             
-            # --- CORRECCIÓN CRÍTICA ---
-            # Si la otra ficha ya fue eliminada (no es visible), NO BLOQUEA.
-            if not other.is_visible: 
-                continue
-            # --------------------------
-            
-            # Check collision above (Layer Z+1)
             if other.z == layer + 1:
                 if (other.x < right and other.x + c.TILE_WIDTH > left and
                         other.y < bottom and other.y + c.TILE_HEIGHT > top):
                     blocked_above = True
             
-            # Check lateral collision (Same Layer Z)
             if other.z == layer:
-                # Left neighbor
                 if (other.x + c.TILE_WIDTH == left and
                         other.y < bottom and other.y + c.TILE_HEIGHT > top):
                     blocked_left = True
-                
-                # Right neighbor
                 if (other.x == right and
                         other.y < bottom and other.y + c.TILE_HEIGHT > top):
                     blocked_right = True
@@ -121,99 +107,50 @@ class Board:
         if blocked_left and blocked_right: return False
         return True
 
-    def get_blockers(self, tile):
+    def is_match(self, t1, t2):
         """
-        Debug helper to find WHO is blocking a tile.
+        NUEVA LÓGICA DE BARAJA ESPAÑOLA.
         """
-        blockers = []
-        left = tile.x
-        right = tile.x + c.TILE_WIDTH
-        top = tile.y
-        bottom = tile.y + c.TILE_HEIGHT
-        layer = tile.z
-        
-        has_left = False
-        has_right = False
-        l_blocker = None
-        r_blocker = None
-        
-        for other in self.tiles:
-            if other.id == tile.id: continue
+        # 1. Regla de SOTAS (Jacks) - Bonus
+        # Todas las sotas casan entre ellas (sin importar palo)
+        if t1.suit == c.TYPE_JACK and t2.suit == c.TYPE_JACK:
+            return True
             
-            # --- CORRECCIÓN CRÍTICA TAMBIÉN AQUÍ ---
-            if not other.is_visible: continue
+        # 2. Regla de REYES (Kings) - Bonus
+        # Todos los reyes casan entre ellos
+        if t1.suit == c.TYPE_KING and t2.suit == c.TYPE_KING:
+            return True
             
-            # Check Top
-            if other.z == layer + 1:
-                if (other.x < right and other.x + c.TILE_WIDTH > left and
-                    other.y < bottom and other.y + c.TILE_HEIGHT > top):
-                    blockers.append(f"Blocked ABOVE by {other}")
+        # 3. Regla General (Números, Caballos, Jokers)
+        # Deben ser idénticos en Palo y Valor
+        if t1.suit == t2.suit and t1.value == t2.value:
+            return True
             
-            # Check Sides
-            if other.z == layer:
-                if (other.x + c.TILE_WIDTH == left and 
-                    other.y < bottom and other.y + c.TILE_HEIGHT > top):
-                    has_left = True
-                    l_blocker = other
-                
-                if (other.x == right and 
-                    other.y < bottom and other.y + c.TILE_HEIGHT > top):
-                    has_right = True
-                    r_blocker = other
-
-        if has_left and has_right:
-            blockers.append(f"Blocked LATERALLY by Left:{l_blocker} and Right:{r_blocker}")
-            
-        return blockers
-    
-    def has_valid_moves(self):
-        """
-        Comprueba si existe al menos una pareja de fichas libres en el tablero.
-        Returns:
-            bool: True si hay movimientos posibles, False si no (Game Over).
-        """
-        # 1. Obtener todas las fichas visibles que NO están bloqueadas
-        free_tiles = []
-        for tile in self.tiles:
-            if tile.is_visible and self.can_move(tile):
-                free_tiles.append(tile)
-        
-        # 2. Fuerza bruta: Comparar cada ficha libre con las demás
-        # Como n es pequeño (max 144), esto es muy rápido para el ordenador.
-        for i in range(len(free_tiles)):
-            for j in range(i + 1, len(free_tiles)):
-                t1 = free_tiles[i]
-                t2 = free_tiles[j]
-                
-                # Comprobar si son pareja (Mismo palo y valor)
-                # NOTA: Aquí podrías añadir lógica especial para Flores/Estaciones si quisieras
-                if t1.suit == t2.suit and t1.value == t2.value:
-                    print(f"DEBUG: Movimiento posible encontrado: {t1} y {t2}")
-                    return True
-                    
         return False
-    
-    def get_hint_pair(self):
-        """
-        Busca y devuelve una pareja de fichas libres que coincidan.
-        
-        Returns:
-            tuple[Tile, Tile] | None: La pareja de fichas encontrada, 
-                                      o None si no hay movimientos.
-        """
-        # 1. Obtener fichas libres visibles
-        free_tiles = []
-        for tile in self.tiles:
-            if tile.is_visible and self.can_move(tile):
-                free_tiles.append(tile)
-        
-        # 2. Buscar pareja
+
+    # (Mantén has_valid_moves, get_hint_pair y shuffle_remaining igual que antes
+    # porque solo llaman a can_move e is_match, así que funcionarán solas).
+    def has_valid_moves(self):
+        free_tiles = [t for t in self.tiles if t.is_visible and self.can_move(t)]
         for i in range(len(free_tiles)):
             for j in range(i + 1, len(free_tiles)):
-                t1 = free_tiles[i]
-                t2 = free_tiles[j]
-                
-                if t1.suit == t2.suit and t1.value == t2.value:
-                    return (t1, t2)
-                    
+                if self.is_match(free_tiles[i], free_tiles[j]):
+                    return True
+        return False
+
+    def get_hint_pair(self):
+        free_tiles = [t for t in self.tiles if t.is_visible and self.can_move(t)]
+        for i in range(len(free_tiles)):
+            for j in range(i + 1, len(free_tiles)):
+                if self.is_match(free_tiles[i], free_tiles[j]):
+                    return (free_tiles[i], free_tiles[j])
         return None
+
+    def shuffle_remaining(self):
+        visible_tiles = [t for t in self.tiles if t.is_visible]
+        content_list = [(t.suit, t.value) for t in visible_tiles]
+        random.shuffle(content_list)
+        for i, tile in enumerate(visible_tiles):
+            tile.suit = content_list[i][0]
+            tile.value = content_list[i][1]
+            tile.is_selected = False
