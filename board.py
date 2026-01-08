@@ -5,152 +5,148 @@ import layouts
 from tile import Tile
 
 class Board:
-    def __init__(self):
+    def __init__(self, layout_mode="TURTLE", difficulty="HARD"):
         self.tiles = []
-        self._generate_spanish_deck() # <--- Nombre nuevo
-        self._load_layout()
-
-    def _generate_spanish_deck(self):
-        """Genera las 144 fichas usando la estructura de Baraja Española."""
-        self.tiles = []
-        tile_id = 0
         
-        # 1. CARTAS NUMÉRICAS (1 al 9) de OROS, COPAS, ESPADAS
-        # (Equivalente a los 3 palos del Mahjong)
-        # 3 palos x 9 cartas x 4 copias = 108 fichas
-        main_suits = [c.SUIT_COINS, c.SUIT_CUPS, c.SUIT_SWORDS]
-        for suit in main_suits:
-            for value in range(1, 10): # Del 1 al 9
-                for _ in range(4):     # 4 copias de cada
-                    self.tiles.append(Tile(suit, value, tile_id))
+        # 1. Cargar el mapa (posiciones)
+        if layout_mode == "BUTTERFLY":
+            self.positions = layouts.get_butterfly_layout()
+        elif layout_mode == "COLOSSEUM":
+            self.positions = layouts.get_colosseum_layout()
+        else:
+            self.positions = layouts.get_turtle_layout() # Default
+            
+        # 2. Generar fichas según dificultad
+        self._generate_custom_deck(len(self.positions), difficulty)
+        
+        # 3. Asignar posiciones
+        self._assign_positions()
+
+    def _generate_custom_deck(self, total_needed, difficulty):
+        """
+        Genera exactamente 'total_needed' fichas.
+        - HARD: Usa TODOS los tipos (36-40 tipos). Pocas repeticiones (difícil).
+        - MEDIUM: Quita Reyes, Jokers y Caballos.
+        - EASY: Solo usa los números 1-7 de 2 palos. Mucha repetición (fácil).
+        """
+        self.tiles = []
+        
+        # Definir el 'pool' de símbolos disponibles según dificultad
+        available_types = []
+        
+        # --- CONFIGURACIÓN HARD (Todo) ---
+        suits_num = [c.SUIT_COINS, c.SUIT_CUPS, c.SUIT_SWORDS]
+        values_num = list(range(1, 10)) # 1 al 9
+        special_sets = [(c.TYPE_KNIGHT, ["Coins", "Cups", "Swords", "Clubs"]),
+                        (c.TYPE_JACK, ["Coins", "Cups", "Swords", "Clubs"]),
+                        (c.TYPE_KING, ["Coins", "Cups", "Swords", "Clubs"]),
+                        (c.TYPE_JOKER, ["Red", "Green", "Blue"])]
+        
+        if difficulty == "MEDIUM":
+            # Quitamos Jokers y Reyes. Dejamos Sotas, Caballos y Números.
+            special_sets = [(c.TYPE_KNIGHT, ["Coins", "Cups", "Swords", "Clubs"]),
+                            (c.TYPE_JACK, ["Coins", "Cups", "Swords", "Clubs"])]
+            
+        elif difficulty == "EASY":
+            # Quitamos TODAS las figuras y Jokers.
+            # Quitamos también el palo de Espadas. Solo Oros y Copas del 1 al 7.
+            suits_num = [c.SUIT_COINS, c.SUIT_CUPS]
+            values_num = list(range(1, 8)) # Solo hasta el 7
+            special_sets = []
+
+        # Construir lista de tipos
+        for s in suits_num:
+            for v in values_num:
+                available_types.append((s, v))
+        
+        for type_name, subtypes in special_sets:
+            for sub in subtypes:
+                available_types.append((type_name, sub))
+
+        # --- RELLENAR EL MAZO ---
+        # El Mahjong necesita PAREJAS. Siempre añadimos de 2 en 2.
+        tile_id = 0
+        current_deck = []
+        
+        while len(current_deck) < total_needed:
+            # Elegimos un tipo al azar de los disponibles
+            stype = random.choice(available_types)
+            
+            # Añadimos 2 copias (o 4 si queremos asegurar más facilidad)
+            # Para que sea soluble, añadimos una PAREJA.
+            for _ in range(2):
+                if len(current_deck) < total_needed:
+                    current_deck.append(Tile(stype[0], stype[1], tile_id))
                     tile_id += 1
         
-        # 2. CABALLOS (Knights) - 4 Tipos
-        # (Equivalente a Vientos)
-        # Usamos los 4 palos para los caballos: Coins, Cups, Swords, Clubs
-        # 4 tipos x 4 copias = 16 fichas
-        knights = [c.SUIT_COINS, c.SUIT_CUPS, c.SUIT_SWORDS, c.SUIT_CLUBS]
-        for k_suit in knights:
-            for _ in range(4):
-                self.tiles.append(Tile(c.TYPE_KNIGHT, k_suit, tile_id))
-                tile_id += 1
+        # Barajar
+        random.shuffle(current_deck)
+        self.tiles = current_deck
 
-        # 3. COMODINES (Jokers) - 3 Tipos
-        # (Equivalente a Dragones)
-        # 3 tipos x 4 copias = 12 fichas
-        jokers = ["Red", "Green", "Blue"] # Tus archivos son Joker_Red, Joker_Green...
-        for color in jokers:
-            for _ in range(4):
-                self.tiles.append(Tile(c.TYPE_JOKER, color, tile_id))
-                tile_id += 1
-        
-        # 4. SOTAS (Jacks) - Bonus 1
-        # (Equivalente a Flores)
-        # 4 tipos x 1 copia = 4 fichas
-        jacks = [c.SUIT_COINS, c.SUIT_CUPS, c.SUIT_SWORDS, c.SUIT_CLUBS]
-        for j_suit in jacks:
-            self.tiles.append(Tile(c.TYPE_JACK, j_suit, tile_id))
-            tile_id += 1
-
-        # 5. REYES (Kings) - Bonus 2
-        # (Equivalente a Estaciones)
-        # 4 tipos x 1 copia = 4 fichas
-        kings = [c.SUIT_COINS, c.SUIT_CUPS, c.SUIT_SWORDS, c.SUIT_CLUBS]
-        for k_suit in kings:
-            self.tiles.append(Tile(c.TYPE_KING, k_suit, tile_id))
-            tile_id += 1
-        
-        random.shuffle(self.tiles)
-
-    def _load_layout(self):
-        # (Esto NO cambia, usa layouts.py igual)
-        positions = layouts.get_turtle_layout()
-        if len(self.tiles) > len(positions):
-            self.tiles = self.tiles[:len(positions)]
-        
-        for i, tile in enumerate(self.tiles):
-            if i < len(positions):
-                x, y, z = positions[i]
-                tile.set_position(x, y, z)
-
+    def _assign_positions(self):
+        # Asigna las coordenadas X,Y,Z de la lista 'positions' a las fichas
+        # Si hay más posiciones que fichas (por ajuste impar), recortamos posiciones
+        limit = min(len(self.tiles), len(self.positions))
+        for i in range(limit):
+            x, y, z = self.positions[i]
+            self.tiles[i].set_position(x, y, z)
+            
+    # ... (Resto de métodos: can_move, is_match, etc. SE MANTIENEN IGUAL) ...
     def can_move(self, tile):
-        # (Copia tu método can_move anterior, ese es pura física y no cambia)
-        # ... (código de colisiones igual que antes) ...
-        left = tile.x
-        right = tile.x + c.TILE_WIDTH
-        top = tile.y
-        bottom = tile.y + c.TILE_HEIGHT
+        # (Copia tu código anterior de can_move aquí)
+        # Importante: Asegúrate de tener el código de colisiones aquí
+        left, right = tile.x, tile.x + c.TILE_WIDTH
+        top, bottom = tile.y, tile.y + c.TILE_HEIGHT
         layer = tile.z
-        
-        blocked_above = False
-        blocked_left = False
-        blocked_right = False
-        
+        blocked_above, blocked_left, blocked_right = False, False, False
         for other in self.tiles:
-            if other.id == tile.id: continue
-            if not other.is_visible: continue # Importante
-            
+            if other.id == tile.id or not other.is_visible: continue
             if other.z == layer + 1:
-                if (other.x < right and other.x + c.TILE_WIDTH > left and
-                        other.y < bottom and other.y + c.TILE_HEIGHT > top):
+                if (other.x < right and other.x + c.TILE_WIDTH > left and other.y < bottom and other.y + c.TILE_HEIGHT > top):
                     blocked_above = True
-            
             if other.z == layer:
-                if (other.x + c.TILE_WIDTH == left and
-                        other.y < bottom and other.y + c.TILE_HEIGHT > top):
-                    blocked_left = True
-                if (other.x == right and
-                        other.y < bottom and other.y + c.TILE_HEIGHT > top):
-                    blocked_right = True
-
-        if blocked_above: return False
-        if blocked_left and blocked_right: return False
-        return True
+                if (other.x + c.TILE_WIDTH == left and other.y < bottom and other.y + c.TILE_HEIGHT > top): blocked_left = True
+                if (other.x == right and other.y < bottom and other.y + c.TILE_HEIGHT > top): blocked_right = True
+        return not blocked_above and not (blocked_left and blocked_right)
 
     def is_match(self, t1, t2):
-        """
-        NUEVA LÓGICA DE BARAJA ESPAÑOLA.
-        """
-        # 1. Regla de SOTAS (Jacks) - Bonus
-        # Todas las sotas casan entre ellas (sin importar palo)
-        if t1.suit == c.TYPE_JACK and t2.suit == c.TYPE_JACK:
-            return True
-            
-        # 2. Regla de REYES (Kings) - Bonus
-        # Todos los reyes casan entre ellos
-        if t1.suit == c.TYPE_KING and t2.suit == c.TYPE_KING:
-            return True
-            
-        # 3. Regla General (Números, Caballos, Jokers)
-        # Deben ser idénticos en Palo y Valor
-        if t1.suit == t2.suit and t1.value == t2.value:
-            return True
-            
+        # (Copia tu código anterior de is_match aquí)
+        if t1.suit == c.TYPE_JACK and t2.suit == c.TYPE_JACK: return True
+        if t1.suit == c.TYPE_KING and t2.suit == c.TYPE_KING: return True
+        if t1.suit == t2.suit and t1.value == t2.value: return True
         return False
-
-    # (Mantén has_valid_moves, get_hint_pair y shuffle_remaining igual que antes
-    # porque solo llaman a can_move e is_match, así que funcionarán solas).
+        
     def has_valid_moves(self):
-        free_tiles = [t for t in self.tiles if t.is_visible and self.can_move(t)]
-        for i in range(len(free_tiles)):
-            for j in range(i + 1, len(free_tiles)):
-                if self.is_match(free_tiles[i], free_tiles[j]):
-                    return True
+        # (Igual que antes)
+        vis = [t for t in self.tiles if t.is_visible and self.can_move(t)]
+        for i in range(len(vis)):
+            for j in range(i+1, len(vis)):
+                if self.is_match(vis[i], vis[j]): return True
         return False
 
     def get_hint_pair(self):
-        free_tiles = [t for t in self.tiles if t.is_visible and self.can_move(t)]
-        for i in range(len(free_tiles)):
-            for j in range(i + 1, len(free_tiles)):
-                if self.is_match(free_tiles[i], free_tiles[j]):
-                    return (free_tiles[i], free_tiles[j])
+        # (Igual que antes)
+        vis = [t for t in self.tiles if t.is_visible and self.can_move(t)]
+        for i in range(len(vis)):
+            for j in range(i+1, len(vis)):
+                if self.is_match(vis[i], vis[j]): return (vis[i], vis[j])
         return None
 
     def shuffle_remaining(self):
-        visible_tiles = [t for t in self.tiles if t.is_visible]
-        content_list = [(t.suit, t.value) for t in visible_tiles]
-        random.shuffle(content_list)
-        for i, tile in enumerate(visible_tiles):
-            tile.suit = content_list[i][0]
-            tile.value = content_list[i][1]
-            tile.is_selected = False
+        # (Igual que antes)
+        vis = [t for t in self.tiles if t.is_visible]
+        content = [(t.suit, t.value) for t in vis]
+        random.shuffle(content)
+        for i, t in enumerate(vis):
+            t.suit, t.value = content[i]
+            t.is_selected = False
+            
+    def get_state(self): return [t.to_dict() for t in self.tiles]
+
+    def set_state(self, tiles_data):
+        """Reconstruye el tablero desde una lista de datos."""
+        self.tiles = []
+        for t_data in tiles_data:
+            # Usamos el método estático que creamos antes
+            new_tile = Tile.from_dict(t_data)
+            self.tiles.append(new_tile)

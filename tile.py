@@ -63,3 +63,31 @@ class Tile:
             str: A readable description of the tile and its position.
         """
         return f"[{self.suit}-{self.value} (ID:{self.id}) at ({self.x},{self.y},{self.z})]"
+    
+    # ... (dentro de la clase Tile) ...
+
+    def to_dict(self):
+        """Convierte la ficha en un diccionario para guardar."""
+        return {
+            "suit": self.suit,
+            "value": self.value,
+            "id": self.id,
+            "x": self.x,
+            "y": self.y,
+            "z": self.z,
+            "is_visible": self.is_visible,
+            "is_selected": self.is_selected
+        }
+
+    @staticmethod
+    def from_dict(data):
+        """Crea una ficha nueva a partir de datos guardados."""
+        # Creamos la ficha con datos básicos
+        tile = Tile(data["suit"], data["value"], data["id"])
+        # Restauramos estado
+        tile.x = data["x"]
+        tile.y = data["y"]
+        tile.z = data["z"]
+        tile.is_visible = data["is_visible"]
+        tile.is_selected = data["is_selected"]
+        return tile
