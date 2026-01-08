@@ -1,23 +1,30 @@
 """
-Layouts Module
-Defines the tile positions (x, y, z) for different map configurations.
-Each layout is designed to produce an even number of tiles for gameplay validity.
+Layouts Module.
+
+This module defines the specific tile arrangements (maps) for the game.
+Each layout function calculates and returns a list of (x, y, z) coordinates
+representing the 3D position of every tile on the board.
 """
 
 def get_turtle_layout():
     """
-    Map 1: The Classic Turtle (Refined).
-    Features a large central pyramid with distinct head, tail, and legs.
+    Generates the classic 'Turtle' formation.
+    
+    This layout features a large central pyramid (the shell) built up to
+    5 layers, with distinct extensions representing the head, tail, and legs.
+    
+    Returns:
+        list: A list of (x, y, z) tuples representing tile coordinates.
     """
     positions = []
     
-    # --- Layer 0: Base Body ---
-    # Main rectangle body
+    # --- LAYER 0: BASE BODY ---
+    # Main rectangular body
     for x in range(6, 44, 2):
         for y in range(2, 18, 2):
             positions.append((x, y, 0))
             
-    # Head (Left) and Tail (Right)
+    # Head (Left) and Tail (Right) extensions
     positions.append((2, 8, 0)); positions.append((2, 10, 0))   # Head tip
     positions.append((4, 8, 0)); positions.append((4, 10, 0))   # Neck
     positions.append((44, 8, 0)); positions.append((44, 10, 0)) # Tail base
@@ -28,22 +35,22 @@ def get_turtle_layout():
         positions.append((x, 0, 0))  # Top legs
         positions.append((x, 18, 0)) # Bottom legs
 
-    # --- Layer 1: Shell Tier 1 ---
+    # --- LAYER 1: SHELL TIER 1 ---
     for x in range(12, 38, 2):
         for y in range(4, 16, 2):
             positions.append((x, y, 1))
 
-    # --- Layer 2: Shell Tier 2 ---
+    # --- LAYER 2: SHELL TIER 2 ---
     for x in range(16, 34, 2):
         for y in range(6, 14, 2):
             positions.append((x, y, 2))
 
-    # --- Layer 3: Shell Tier 3 ---
+    # --- LAYER 3: SHELL TIER 3 ---
     for x in range(20, 30, 2):
         for y in range(8, 12, 2):
             positions.append((x, y, 3))
 
-    # --- Layer 4: Summit ---
+    # --- LAYER 4: SUMMIT ---
     positions.append((24, 8, 4))
     positions.append((24, 10, 4))
 
@@ -52,18 +59,23 @@ def get_turtle_layout():
 
 def get_butterfly_layout():
     """
-    Map 2: The Butterfly.
-    A highly symmetric layout with a tall central body and spreading wings.
-    Symmetry guarantees an even tile count.
+    Generates the 'Butterfly' formation.
+    
+    A highly symmetric layout featuring a tall central column (the body)
+    and wide, tiered triangles on either side representing spreading wings.
+    
+    Returns:
+        list: A list of (x, y, z) tuples representing tile coordinates.
     """
     positions = []
     
-    # --- Central Body (Tall column) ---
+    # --- CENTRAL BODY ---
+    # A tall column in the center (x=24)
     for z in range(5):
         for y in range(2, 18, 2):
             positions.append((24, y, z))
 
-    # --- Wings (Symmetric Left and Right) ---
+    # --- WINGS (SYMMETRIC) ---
     
     # Layer 0: Wide base wings
     for y in range(2, 18, 2):
@@ -100,18 +112,23 @@ def get_butterfly_layout():
 
 def get_colosseum_layout():
     """
-    Map 3: The Fortress.
-    A strategic layout with high outer walls protecting a lower interior courtyard.
+    Generates the 'Fortress' (Colosseum) formation.
+    
+    A strategic layout with high outer walls forming a perimeter,
+    protecting a lower interior courtyard with scattered piles.
+    
+    Returns:
+        list: A list of (x, y, z) tuples representing tile coordinates.
     """
     positions = []
     
-    # --- Layer 0: Solid Foundation ---
+    # --- LAYER 0: SOLID FOUNDATION ---
     for x in range(6, 44, 2):
         for y in range(2, 18, 2):
             positions.append((x, y, 0))
             
-    # --- Layers 1, 2, 3: Outer Walls ---
-    # We build walls on the perimeter (Top, Bottom, Left, Right)
+    # --- LAYERS 1-3: OUTER WALLS ---
+    # Build walls on the perimeter (Top, Bottom, Left, Right)
     for z in [1, 2, 3]:
         # Top and Bottom walls
         for x in range(6, 44, 2):
@@ -122,12 +139,12 @@ def get_colosseum_layout():
             positions.append((6, y, z))
             positions.append((42, y, z))
             
-    # --- Layer 4: Corner Towers ---
+    # --- LAYER 4: CORNER TOWERS ---
     corners = [(6, 2), (42, 2), (6, 16), (42, 16)]
     for (x, y) in corners:
         positions.append((x, y, 4))
         
-    # --- Layer 1: Interior Courtyard structures ---
+    # --- LAYER 1: INTERIOR COURTYARD ---
     # Small clusters in the center
     positions.append((24, 8, 1)); positions.append((24, 10, 1))
     positions.append((22, 8, 1)); positions.append((22, 10, 1))

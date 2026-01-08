@@ -579,7 +579,7 @@ class GameWindow:
             ts = self.ui_font.render(txt, True, (255,255,255))
             self.screen.blit(ts, (rect.centerx-ts.get_width()//2, rect.centery-ts.get_height()//2))
             
-        draw_ui_btn(self.btn_hint, "HINT (-50)")
+        draw_ui_btn(self.btn_hint, "HINT")
         draw_ui_btn(self.btn_shuffle, "SHUFFLE")
         draw_ui_btn(self.btn_undo, "UNDO")
         draw_ui_btn(self.btn_menu, "MENU")

@@ -1,23 +1,24 @@
 """
 Tile Module.
 
-This module contains the definition of the Tile class, which represents
-the fundamental unit (the game piece) in Mahjong Solitaire.
+This module defines the Tile class, which represents the fundamental 
+game piece in Mahjong Solitaire. It handles the state, position, 
+and serialization of individual tiles.
 """
 
 class Tile:
     """
-    Represents a single Mahjong tile and its state.
+    Represents a single Mahjong tile and its current state on the board.
 
     Attributes:
-        suit (str): The suit of the tile (e.g., Bamboo, Dots, Winds).
-        value (str | int): The specific value (1-9, North, Red, etc.).
-        id (int): A unique identifier for the tile.
-        x (int): The logical X coordinate on the board grid.
-        y (int): The logical Y coordinate on the board grid.
-        z (int): The Z coordinate (layer/stack height) on the board.
-        is_visible (bool): Indicates if the tile should be rendered.
-        is_selected (bool): Indicates if the tile is currently selected by the user.
+        suit (str): The suit/family of the tile (e.g., 'Coins', 'Cups').
+        value (str | int): The specific value (1-9, King, Jack, etc.).
+        id (int): A unique identifier for tracking this specific instance.
+        x (int): The logical grid X coordinate.
+        y (int): The logical grid Y coordinate.
+        z (int): The layer/stack height (Z coordinate).
+        is_visible (bool): True if the tile is still in play; False if matched/removed.
+        is_selected (bool): True if the user has currently clicked/selected this tile.
     """
 
     def __init__(self, suit, value, tile_id):
@@ -25,29 +26,29 @@ class Tile:
         Initializes a new Tile instance.
 
         Args:
-            suit (str): The suit/family of the tile.
-            value (str | int): The specific value of the tile.
-            tile_id (int): The unique ID assigned by the deck generator.
+            suit (str): The suit of the tile.
+            value (str | int): The value or rank of the tile.
+            tile_id (int): Unique ID assigned during deck generation.
         """
         self.id = tile_id
         self.suit = suit
         self.value = value
         
-        # Initial coordinates (set later by the layout loader)
+        # Initial coordinates (defaults to 0, updated by layout loader)
         self.x = 0
         self.y = 0
         self.z = 0
         
         self.is_visible = True
-        self.is_selected = False  # <--- NUEVO ATRIBUTO
+        self.is_selected = False
 
     def set_position(self, x, y, z):
         """
         Sets the tile's position in the 3D board space.
 
         Args:
-            x (int): The horizontal position.
-            y (int): The vertical position.
+            x (int): The horizontal grid position.
+            y (int): The vertical grid position.
             z (int): The layer or stack height.
         """
         self.x = x
@@ -56,18 +57,21 @@ class Tile:
 
     def __repr__(self):
         """
-        Returns a formal string representation of the tile.
-        Useful for debugging and logging.
+        Returns a string representation of the tile for debugging.
 
         Returns:
-            str: A readable description of the tile and its position.
+            str: Format '[Suit-Value (ID) at (x,y,z)]'
         """
         return f"[{self.suit}-{self.value} (ID:{self.id}) at ({self.x},{self.y},{self.z})]"
-    
-    # ... (dentro de la clase Tile) ...
 
     def to_dict(self):
-        """Convierte la ficha en un diccionario para guardar."""
+        """
+        Serializes the tile object into a dictionary.
+        Used for saving the game state to a file.
+
+        Returns:
+            dict: A dictionary containing all tile attributes.
+        """
         return {
             "suit": self.suit,
             "value": self.value,
@@ -81,13 +85,24 @@ class Tile:
 
     @staticmethod
     def from_dict(data):
-        """Crea una ficha nueva a partir de datos guardados."""
-        # Creamos la ficha con datos básicos
+        """
+        Factory method to reconstruct a Tile object from a dictionary.
+        Used when loading a saved game.
+
+        Args:
+            data (dict): The dictionary containing tile data.
+
+        Returns:
+            Tile: A fully restored Tile instance.
+        """
+        # Initialize basic identity
         tile = Tile(data["suit"], data["value"], data["id"])
-        # Restauramos estado
+        
+        # Restore position and state
         tile.x = data["x"]
         tile.y = data["y"]
         tile.z = data["z"]
         tile.is_visible = data["is_visible"]
         tile.is_selected = data["is_selected"]
+        
         return tile

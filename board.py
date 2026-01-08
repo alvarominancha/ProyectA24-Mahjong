@@ -1,152 +1,199 @@
-# board.py
+"""
+Board Module.
+
+This module manages the game board logic, including tile generation, 
+layout positioning, collision detection, and matching rules.
+"""
+
 import random
 import constants as c
 import layouts
 from tile import Tile
 
 class Board:
-    def __init__(self, layout_mode="TURTLE", difficulty="HARD"):
+    """
+    Represents the Mahjong board state.
+    Handles the deck generation, layout assignment, and move validation.
+    """
+
+    def __init__(self, layout_mode, difficulty):
+        """
+        Initializes the board with a specific layout and difficulty.
+        
+        Args:
+            layout_mode (str): The shape of the map (TURTLE, BUTTERFLY, COLOSSEUM).
+            difficulty (str): The complexity of the deck (EASY, MEDIUM, HARD).
+        """
         self.tiles = []
         
-        # 1. Cargar el mapa (posiciones)
+        # --- 1. LOAD LAYOUT POSITIONS ---
         if layout_mode == "BUTTERFLY":
             self.positions = layouts.get_butterfly_layout()
         elif layout_mode == "COLOSSEUM":
             self.positions = layouts.get_colosseum_layout()
         else:
-            self.positions = layouts.get_turtle_layout() # Default
+            self.positions = layouts.get_turtle_layout()
             
-        # 2. Generar fichas según dificultad
+        # --- 2. GENERATE DECK & ASSIGN POSITIONS ---
         self._generate_custom_deck(len(self.positions), difficulty)
-        
-        # 3. Asignar posiciones
         self._assign_positions()
 
     def _generate_custom_deck(self, total_needed, difficulty):
         """
-        Genera exactamente 'total_needed' fichas.
-        - HARD: Usa TODOS los tipos (36-40 tipos). Pocas repeticiones (difícil).
-        - MEDIUM: Quita Reyes, Jokers y Caballos.
-        - EASY: Solo usa los números 1-7 de 2 palos. Mucha repetición (fácil).
+        Generates a balanced deck of tiles based on the requested difficulty.
+        Ensures matching pairs are available.
         """
         self.tiles = []
-        
-        # Definir el 'pool' de símbolos disponibles según dificultad
         available_types = []
         
-        # --- CONFIGURACIÓN HARD (Todo) ---
-        suits_num = [c.SUIT_COINS, c.SUIT_CUPS, c.SUIT_SWORDS]
-        values_num = list(range(1, 10)) # 1 al 9
-        special_sets = [(c.TYPE_KNIGHT, ["Coins", "Cups", "Swords", "Clubs"]),
-                        (c.TYPE_JACK, ["Coins", "Cups", "Swords", "Clubs"]),
-                        (c.TYPE_KING, ["Coins", "Cups", "Swords", "Clubs"]),
-                        (c.TYPE_JOKER, ["Red", "Green", "Blue"])]
+        # Base Configuration
+        suits = [c.SUIT_COINS, c.SUIT_CUPS, c.SUIT_SWORDS]
+        values = list(range(1, 10)) 
         
+        # Special Sets definitions
+        special_sets = [
+            (c.TYPE_KNIGHT, ["Coins", "Cups", "Swords", "Clubs"]),
+            (c.TYPE_JACK, ["Coins", "Cups", "Swords", "Clubs"]),
+            (c.TYPE_KING, ["Coins", "Cups", "Swords", "Clubs"]),
+            (c.TYPE_JOKER, ["Red", "Green", "Blue"])
+        ]
+        
+        # --- DIFFICULTY ADJUSTMENT ---
         if difficulty == "MEDIUM":
-            # Quitamos Jokers y Reyes. Dejamos Sotas, Caballos y Números.
-            special_sets = [(c.TYPE_KNIGHT, ["Coins", "Cups", "Swords", "Clubs"]),
-                            (c.TYPE_JACK, ["Coins", "Cups", "Swords", "Clubs"])]
+            # Remove Kings and Jokers
+            special_sets = [
+                (c.TYPE_KNIGHT, ["Coins", "Cups", "Swords", "Clubs"]),
+                (c.TYPE_JACK, ["Coins", "Cups", "Swords", "Clubs"])
+            ]
             
         elif difficulty == "EASY":
-            # Quitamos TODAS las figuras y Jokers.
-            # Quitamos también el palo de Espadas. Solo Oros y Copas del 1 al 7.
-            suits_num = [c.SUIT_COINS, c.SUIT_CUPS]
-            values_num = list(range(1, 8)) # Solo hasta el 7
+            # Simplified deck: Coins and Cups only, values 1-7
+            suits = [c.SUIT_COINS, c.SUIT_CUPS]
+            values = list(range(1, 8))
             special_sets = []
 
-        # Construir lista de tipos
-        for s in suits_num:
-            for v in values_num:
+        # Build pool of types
+        for s in suits:
+            for v in values:
                 available_types.append((s, v))
         
         for type_name, subtypes in special_sets:
             for sub in subtypes:
                 available_types.append((type_name, sub))
 
-        # --- RELLENAR EL MAZO ---
-        # El Mahjong necesita PAREJAS. Siempre añadimos de 2 en 2.
+        # --- FILL DECK WITH PAIRS ---
         tile_id = 0
         current_deck = []
         
         while len(current_deck) < total_needed:
-            # Elegimos un tipo al azar de los disponibles
             stype = random.choice(available_types)
-            
-            # Añadimos 2 copias (o 4 si queremos asegurar más facilidad)
-            # Para que sea soluble, añadimos una PAREJA.
+            # Add pairs to ensure solvability
             for _ in range(2):
                 if len(current_deck) < total_needed:
                     current_deck.append(Tile(stype[0], stype[1], tile_id))
                     tile_id += 1
         
-        # Barajar
         random.shuffle(current_deck)
         self.tiles = current_deck
 
     def _assign_positions(self):
-        # Asigna las coordenadas X,Y,Z de la lista 'positions' a las fichas
-        # Si hay más posiciones que fichas (por ajuste impar), recortamos posiciones
+        """Maps the logical 3D coordinates to the tile objects."""
         limit = min(len(self.tiles), len(self.positions))
         for i in range(limit):
             x, y, z = self.positions[i]
             self.tiles[i].set_position(x, y, z)
-            
-    # ... (Resto de métodos: can_move, is_match, etc. SE MANTIENEN IGUAL) ...
+
+    # --- GAMEPLAY LOGIC ---
+
     def can_move(self, tile):
-        # (Copia tu código anterior de can_move aquí)
-        # Importante: Asegúrate de tener el código de colisiones aquí
+        """
+        Determines if a tile is 'free' to be selected.
+        Rule: A tile is free if no tile is on top AND (left is free OR right is free).
+        """
         left, right = tile.x, tile.x + c.TILE_WIDTH
         top, bottom = tile.y, tile.y + c.TILE_HEIGHT
         layer = tile.z
-        blocked_above, blocked_left, blocked_right = False, False, False
+        
+        blocked_above = False
+        blocked_left = False
+        blocked_right = False
+        
         for other in self.tiles:
             if other.id == tile.id or not other.is_visible: continue
+            
+            # Check blocking tile above (Z+1)
             if other.z == layer + 1:
-                if (other.x < right and other.x + c.TILE_WIDTH > left and other.y < bottom and other.y + c.TILE_HEIGHT > top):
+                # Collision detection (Axis-Aligned Bounding Box)
+                if (other.x < right and other.x + c.TILE_WIDTH > left and 
+                    other.y < bottom and other.y + c.TILE_HEIGHT > top):
                     blocked_above = True
+            
+            # Check neighbors (Same Z)
             if other.z == layer:
-                if (other.x + c.TILE_WIDTH == left and other.y < bottom and other.y + c.TILE_HEIGHT > top): blocked_left = True
-                if (other.x == right and other.y < bottom and other.y + c.TILE_HEIGHT > top): blocked_right = True
+                # Left neighbor
+                if (other.x + c.TILE_WIDTH == left and 
+                    other.y < bottom and other.y + c.TILE_HEIGHT > top): 
+                    blocked_left = True
+                # Right neighbor
+                if (other.x == right and 
+                    other.y < bottom and other.y + c.TILE_HEIGHT > top): 
+                    blocked_right = True
+                    
+        # Returns True only if top is free AND at least one side is free
         return not blocked_above and not (blocked_left and blocked_right)
 
     def is_match(self, t1, t2):
-        # (Copia tu código anterior de is_match aquí)
+        """
+        Checks if two tiles are a valid match according to game rules.
+        Includes special wildcard logic for Jacks and Kings.
+        """
+        # Special Bonus Rules (Wildcards)
         if t1.suit == c.TYPE_JACK and t2.suit == c.TYPE_JACK: return True
         if t1.suit == c.TYPE_KING and t2.suit == c.TYPE_KING: return True
+        
+        # Standard Rules (Exact Match)
         if t1.suit == t2.suit and t1.value == t2.value: return True
+        
         return False
         
     def has_valid_moves(self):
-        # (Igual que antes)
-        vis = [t for t in self.tiles if t.is_visible and self.can_move(t)]
-        for i in range(len(vis)):
-            for j in range(i+1, len(vis)):
-                if self.is_match(vis[i], vis[j]): return True
+        """Checks if there is at least one valid pair available to play."""
+        visible_tiles = [t for t in self.tiles if t.is_visible and self.can_move(t)]
+        
+        for i in range(len(visible_tiles)):
+            for j in range(i + 1, len(visible_tiles)):
+                if self.is_match(visible_tiles[i], visible_tiles[j]): 
+                    return True
         return False
 
     def get_hint_pair(self):
-        # (Igual que antes)
-        vis = [t for t in self.tiles if t.is_visible and self.can_move(t)]
-        for i in range(len(vis)):
-            for j in range(i+1, len(vis)):
-                if self.is_match(vis[i], vis[j]): return (vis[i], vis[j])
+        """Finds and returns a valid matching pair for the hint system."""
+        visible_tiles = [t for t in self.tiles if t.is_visible and self.can_move(t)]
+        
+        for i in range(len(visible_tiles)):
+            for j in range(i + 1, len(visible_tiles)):
+                if self.is_match(visible_tiles[i], visible_tiles[j]): 
+                    return (visible_tiles[i], visible_tiles[j])
         return None
 
     def shuffle_remaining(self):
-        # (Igual que antes)
+        """Rearranges the suits and values of the visible tiles, keeping positions."""
         vis = [t for t in self.tiles if t.is_visible]
         content = [(t.suit, t.value) for t in vis]
         random.shuffle(content)
+        
         for i, t in enumerate(vis):
             t.suit, t.value = content[i]
             t.is_selected = False
-            
-    def get_state(self): return [t.to_dict() for t in self.tiles]
+
+    # --- PERSISTENCE ---
+
+    def get_state(self): 
+        """Serializes the board state for saving."""
+        return [t.to_dict() for t in self.tiles]
 
     def set_state(self, tiles_data):
-        """Reconstruye el tablero desde una lista de datos."""
+        """Restores the board state from saved data."""
         self.tiles = []
         for t_data in tiles_data:
-            # Usamos el método estático que creamos antes
-            new_tile = Tile.from_dict(t_data)
-            self.tiles.append(new_tile)
+            self.tiles.append(Tile.from_dict(t_data))

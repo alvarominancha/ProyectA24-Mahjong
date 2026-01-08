@@ -51,7 +51,7 @@ class SoundManager:
         if sound_name in self.sounds:
             self.sounds[sound_name].play()
 
-    def play_music(self, filename, volume=0.3):
+    def play_music(self, filename, volume):
         """
         Reproduce una canción en bucle infinito.
         :param filename: Nombre del archivo (ej. 'music.mp3') dentro de assets

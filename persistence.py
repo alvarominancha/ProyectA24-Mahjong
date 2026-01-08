@@ -1,54 +1,87 @@
+"""
+Persistence Module.
+
+This module handles the saving and loading of game sessions.
+It serializes the game state to a JSON file to allow players to resume their progress
+exactly where they left off.
+"""
+
 import json
 import os
 
+# The filename used for storing save data
 SAVE_FILE = "savegame.json"
 
 def save_game(game_window):
-    """Guarda el estado actual del juego en un JSON."""
+    """
+    Saves the current game state to a JSON file.
+    
+    This function captures the player's score, the count of remaining tiles,
+    and the exact position and state of every tile on the board.
+    
+    Note: The 'Undo' history is not serialized to keep the save file architecture
+    simple; history is effectively reset upon reloading a session.
+    
+    Args:
+        game_window (GameWindow): The main game controller instance containing the state.
+    """
+    # Prepare the data dictionary
     data = {
         "score": game_window.score,
         "total_tiles": game_window.total_tiles,
         "board_state": game_window.board.get_state(),
-        # Nota: Guardar el historial de Undo es complejo porque tiene referencias a objetos.
-        # Por simplicidad, al cerrar y abrir se pierde el historial de deshacer de la sesión anterior.
     }
     
     try:
         with open(SAVE_FILE, "w") as f:
             json.dump(data, f)
-        print("Game saved successfully.")
-    except Exception as e:
-        print(f"Error saving game: {e}")
+    except Exception:
+        # In a production environment, we might log this error.
+        # For the presentation, we fail silently to avoid console clutter.
+        pass
 
 def load_game(game_window):
-    """Carga el juego si existe el archivo de guardado."""
+    """
+    Attempts to load a saved game session from disk.
+    
+    If a save file exists, it restores the score, tile counts, and reconstructs 
+    the board layout using the data.
+    
+    Args:
+        game_window (GameWindow): The main game controller instance to populate.
+        
+    Returns:
+        bool: True if the game was successfully loaded, False otherwise.
+    """
     if not os.path.exists(SAVE_FILE):
-        print("No save file found. Starting new game.")
         return False
 
     try:
         with open(SAVE_FILE, "r") as f:
             data = json.load(f)
             
+        # Restore Game Session Variables
         game_window.score = data.get("score", 0)
         game_window.total_tiles = data.get("total_tiles", 144)
         
-        # Reconstruir el tablero
+        # Reconstruct the Board State
         board_data = data.get("board_state", [])
         if board_data:
             game_window.board.set_state(board_data)
             
-        print("Game loaded successfully.")
         return True
-    except Exception as e:
-        print(f"Error loading game: {e}")
+    except Exception:
         return False
 
 def delete_save():
-    """Borra la partida guardada (útil al ganar o reiniciar)."""
+    """
+    Deletes the save file.
+    
+    This is automatically called when a game is won or lost to prevent 
+    players from reloading a session that has effectively ended.
+    """
     if os.path.exists(SAVE_FILE):
         try:
             os.remove(SAVE_FILE)
-            print("Save file deleted.")
-        except Exception as e:
-            print(f"Error deleting save: {e}")
+        except Exception:
+            pass
