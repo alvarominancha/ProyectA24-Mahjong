@@ -153,7 +153,7 @@ class GameWindow:
                                If False, starts a new game with selected settings.
         """
         if load_saved:
-            self.board = Board() 
+            self.board = Board("TURTLE", "MEDIUM")            
             if persistence.load_game(self):
                 self.state = "PLAYING"
                 self.game_state = "PLAYING"
@@ -530,7 +530,7 @@ class GameWindow:
             "2. You can only select 'FREE' tiles.",
             "   (Free = No tile on top & at least one side, right or left, open)",
             "Attention: Each tile has a certain hight, so a tile",
-            "can be free if it is higher than a tile next to it.",
+            "is free if it is higher than a tile next to it.",
             "",
             "3. SPECIAL BONUSES:",
             "   - JACKS (Sotas) match with any Jack.", 
